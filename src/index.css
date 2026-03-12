@@ -4,89 +4,47 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* DenoV — багровая тема */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 92%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 350 80% 45%;
+    --primary-foreground: 0 0% 97%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 80%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 350 65% 35%;
+    --accent-foreground: 0 0% 97%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 350 30% 18%;
+    --input: 0 0% 12%;
+    --ring: 350 70% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.4rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Custom DenoV vars */
+    --crimson: #8b0000;
+    --crimson-bright: #c0152a;
+    --crimson-glow: #ff1a35;
+    --dark-bg: #0d0d0d;
+    --dark-card: #141414;
+    --dark-card2: #1a1010;
+    --text-primary: #ededed;
+    --text-muted: #888888;
+    --border-crimson: rgba(139, 0, 0, 0.4);
   }
 }
 
@@ -97,5 +55,156 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "Rubik", sans-serif;
+    background-color: var(--dark-bg);
+    color: var(--text-primary);
   }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: "Oswald", sans-serif;
+  }
+}
+
+/* Фоновая текстура — едва заметный паттерн */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(
+      ellipse 80% 50% at 50% -20%,
+      rgba(139, 0, 0, 0.15) 0%,
+      transparent 60%
+    ),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238B0000' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--dark-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--crimson);
+  border-radius: 3px;
+}
+
+/* Анимации */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(192, 21, 42, 0.4),
+      0 0 24px rgba(139, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(192, 21, 42, 0.7),
+      0 0 40px rgba(139, 0, 0, 0.35);
+  }
+}
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease forwards;
+}
+.animate-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Кнопка — основная */
+.btn-crimson {
+  background: linear-gradient(135deg, #8b0000 0%, #c0152a 100%);
+  color: #fff;
+  border: 1px solid rgba(192, 21, 42, 0.5);
+  transition: all 0.2s ease;
+}
+.btn-crimson:hover {
+  background: linear-gradient(135deg, #a30000 0%, #d9162f 100%);
+  box-shadow: 0 0 20px rgba(192, 21, 42, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Карточка */
+.denov-card {
+  background: var(--dark-card2);
+  border: 1px solid var(--border-crimson);
+  backdrop-filter: blur(4px);
+}
+
+/* Поля ввода */
+.denov-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(139, 0, 0, 0.3);
+  color: var(--text-primary);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.denov-input:focus {
+  outline: none;
+  border-color: var(--crimson-bright);
+  box-shadow: 0 0 0 2px rgba(192, 21, 42, 0.2);
+}
+.denov-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Навигация */
+.nav-btn {
+  color: var(--text-muted);
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.nav-btn:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--crimson-bright);
+}
+
+/* Горизонтальный разделитель с красным */
+.divider-crimson {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+  opacity: 0.5;
+}
+
+/* UID badge */
+.uid-badge {
+  font-family: "Courier New", monospace;
+  font-size: 0.75rem;
+  background: rgba(139, 0, 0, 0.15);
+  border: 1px solid rgba(139, 0, 0, 0.3);
+  color: #ff6b6b;
+  letter-spacing: 0.05em;
 }
