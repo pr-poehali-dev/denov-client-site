@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 
 const AUTH_URL = 'https://functions.poehali.dev/53927877-ae82-4bf1-af0d-755d69528b51';
 
 interface UserProfile {
   uid: string;
+  player_id: number;
   login: string;
   registered_at: string;
   last_login_at: string | null;
+  avatar_url: string | null;
+  telegram: string | null;
   token: string;
 }
 
@@ -33,6 +36,30 @@ function formatDate(iso: string | null) {
   } catch { return iso; }
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function InfoRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ background: 'rgba(139,0,0,0.15)', border: '1px solid rgba(139,0,0,0.25)' }}>
+        <Icon name={icon} size={15} fallback="Info" style={{ color: 'var(--crimson-bright)' }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs tracking-widest mb-1" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>{label}</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState<'auth' | 'cabinet'>('auth');
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -41,6 +68,19 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [tgEdit, setTgEdit] = useState(false);
+  const [tgValue, setTgValue] = useState('');
+  const [tgLoading, setTgLoading] = useState(false);
+
+  const [pwPanel, setPwPanel] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('denov_token');
@@ -62,24 +102,45 @@ export default function App() {
     setLoading(true);
     const data = await callAuth(mode, { login, password });
     setLoading(false);
-    if (data.error) {
-      setError(data.error);
-    } else {
-      localStorage.setItem('denov_token', data.token);
-      setUser(data);
-      setPage('cabinet');
-    }
+    if (data.error) { setError(data.error); return; }
+    localStorage.setItem('denov_token', data.token);
+    setUser(data);
+    setPage('cabinet');
   };
 
   const handleLogout = async () => {
-    if (user?.token) {
-      await callAuth('logout', {}, user.token);
-      localStorage.removeItem('denov_token');
-    }
-    setUser(null);
-    setPage('auth');
-    setLogin('');
-    setPassword('');
+    if (user?.token) await callAuth('logout', {}, user.token);
+    localStorage.removeItem('denov_token');
+    setUser(null); setPage('auth'); setLogin(''); setPassword(''); setPwPanel(false);
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setAvatarLoading(true);
+    const b64 = await fileToBase64(file);
+    const data = await callAuth('update_avatar', { image_b64: b64, content_type: file.type }, user.token);
+    setAvatarLoading(false);
+    if (data.avatar_url) setUser(u => u ? { ...u, avatar_url: data.avatar_url } : u);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSaveTelegram = async () => {
+    if (!user) return;
+    setTgLoading(true);
+    const data = await callAuth('update_telegram', { telegram: tgValue }, user.token);
+    setTgLoading(false);
+    if (!data.error) { setUser(u => u ? { ...u, telegram: data.telegram } : u); setTgEdit(false); }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setPwLoading(true); setPwMsg(null);
+    const data = await callAuth('change_password', { current_password: pwCurrent, new_password: pwNew }, user.token);
+    setPwLoading(false);
+    if (data.error) { setPwMsg({ type: 'err', text: data.error }); }
+    else { setPwMsg({ type: 'ok', text: 'Пароль успешно изменён' }); setPwCurrent(''); setPwNew(''); }
   };
 
   return (
@@ -95,95 +156,58 @@ export default function App() {
               DENO<span style={{ color: 'var(--crimson-bright)' }}>V</span>
             </span>
           </div>
-
           <nav className="flex items-center gap-1">
-            <a href="https://denovclient2.tilda.ws/" target="_blank" rel="noopener noreferrer"
-              className="nav-btn px-4 py-1.5 text-sm font-medium tracking-wide" style={{ fontFamily: 'Rubik, sans-serif' }}>
-              НОВОСТИ
+            <a href="https://denovclient2.tilda.ws/" target="_blank" rel="noopener noreferrer" className="nav-btn px-4 py-1.5 text-sm font-medium tracking-wide">НОВОСТИ</a>
+            <a href="https://denovclient2.tilda.ws/download" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium btn-crimson rounded ml-1">
+              <Icon name="Download" size={14} />СКАЧАТЬ
             </a>
-            <a href="https://denovclient2.tilda.ws/download" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium btn-crimson rounded ml-1">
-              <Icon name="Download" size={14} />
-              СКАЧАТЬ
-            </a>
-            <a href="https://t.me/DenoVClient" target="_blank" rel="noopener noreferrer"
-              className="nav-btn flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium ml-1">
-              <Icon name="Send" size={14} fallback="MessageCircle" />
-              TG
+            <a href="https://t.me/DenoVClient" target="_blank" rel="noopener noreferrer" className="nav-btn flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium ml-1">
+              <Icon name="Send" size={14} fallback="MessageCircle" />TG
             </a>
           </nav>
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="flex-1 flex items-center justify-center px-4 py-16">
 
+        {/* AUTH */}
         {page === 'auth' && (
           <div className="w-full max-w-md animate-fade-in">
             <div className="h-0.5 w-16 mb-8 mx-auto rounded" style={{ background: 'linear-gradient(90deg, var(--crimson), var(--crimson-bright))' }} />
-
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold tracking-widest mb-2" style={{ fontFamily: 'Oswald, sans-serif', color: 'var(--text-primary)' }}>
+              <h1 className="text-4xl font-bold tracking-widest mb-2" style={{ fontFamily: 'Oswald, sans-serif' }}>
                 {mode === 'login' ? 'ВХОД' : 'РЕГИСТРАЦИЯ'}
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 {mode === 'login' ? 'Войдите в аккаунт DenoV Client' : 'Создайте аккаунт DenoV Client'}
               </p>
             </div>
-
             <div className="denov-card rounded-lg p-8 animate-glow">
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <div>
-                  <label className="block text-xs font-medium tracking-widest mb-2" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>
-                    ЛОГИН
-                  </label>
-                  <input
-                    type="text"
-                    value={login}
-                    onChange={e => setLogin(e.target.value)}
-                    placeholder="Введите логин"
-                    className="denov-input w-full px-4 py-3 rounded text-sm"
-                    autoComplete="username"
-                    required
-                  />
+                  <label className="block text-xs font-medium tracking-widest mb-2" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>ЛОГИН</label>
+                  <input type="text" value={login} onChange={e => setLogin(e.target.value)} placeholder="Введите логин"
+                    className="denov-input w-full px-4 py-3 rounded text-sm" autoComplete="username" required />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium tracking-widest mb-2" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>
-                    ПАРОЛЬ
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Введите пароль"
-                    className="denov-input w-full px-4 py-3 rounded text-sm"
-                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                    required
-                  />
+                  <label className="block text-xs font-medium tracking-widest mb-2" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>ПАРОЛЬ</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Введите пароль"
+                    className="denov-input w-full px-4 py-3 rounded text-sm" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
                 </div>
-
                 {error && (
                   <div className="flex items-center gap-2 text-sm px-3 py-2 rounded" style={{ background: 'rgba(139,0,0,0.2)', border: '1px solid rgba(192,21,42,0.4)', color: '#ff6b6b' }}>
-                    <Icon name="AlertCircle" size={14} />
-                    {error}
+                    <Icon name="AlertCircle" size={14} />{error}
                   </div>
                 )}
-
-                <button type="submit" disabled={loading}
-                  className="btn-crimson w-full py-3 rounded text-sm font-semibold tracking-widest mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ fontFamily: 'Oswald, sans-serif' }}>
+                <button type="submit" disabled={loading} className="btn-crimson w-full py-3 rounded text-sm font-semibold tracking-widest mt-1 disabled:opacity-50 disabled:cursor-not-allowed" style={{ fontFamily: 'Oswald, sans-serif' }}>
                   {loading ? 'ЗАГРУЗКА...' : mode === 'login' ? 'ВОЙТИ' : 'СОЗДАТЬ АККАУНТ'}
                 </button>
               </form>
-
               <div className="divider-crimson my-6" />
-
               <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                 {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}{' '}
-                <button
-                  onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
-                  className="font-medium transition-colors"
-                  style={{ color: 'var(--crimson-bright)' }}
+                <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
+                  className="font-medium transition-colors" style={{ color: 'var(--crimson-bright)' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ff4455')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--crimson-bright)')}>
                   {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
@@ -193,25 +217,37 @@ export default function App() {
           </div>
         )}
 
+        {/* CABINET */}
         {page === 'cabinet' && user && (
           <div className="w-full max-w-xl animate-fade-in">
             <div className="h-0.5 w-16 mb-8 mx-auto rounded" style={{ background: 'linear-gradient(90deg, var(--crimson), var(--crimson-bright))' }} />
-
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold tracking-widest mb-2" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                ЛИЧНЫЙ КАБИНЕТ
-              </h1>
+              <h1 className="text-4xl font-bold tracking-widest mb-2" style={{ fontFamily: 'Oswald, sans-serif' }}>ЛИЧНЫЙ КАБИНЕТ</h1>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 Добро пожаловать, <span style={{ color: 'var(--crimson-bright)' }}>{user.login}</span>
               </p>
             </div>
 
             <div className="denov-card rounded-lg overflow-hidden">
-              {/* Шапка профиля */}
-              <div className="px-8 py-6 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.2) 0%, rgba(26,16,16,0.5) 100%)', borderBottom: '1px solid var(--border-crimson)' }}>
-                <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8B0000, #C0152A)', color: '#fff', fontFamily: 'Oswald, sans-serif', boxShadow: '0 0 20px rgba(192,21,42,0.5)' }}>
-                  {user.login[0].toUpperCase()}
+              {/* Шапка с аватаром */}
+              <div className="px-8 py-6 flex items-center gap-5"
+                style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.2) 0%, rgba(26,16,16,0.5) 100%)', borderBottom: '1px solid var(--border-crimson)' }}>
+                <div className="relative flex-shrink-0 group cursor-pointer" title="Нажмите для смены аватара"
+                  onClick={() => !avatarLoading && fileInputRef.current?.click()}>
+                  <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center text-2xl font-bold select-none"
+                    style={{ background: 'linear-gradient(135deg, #8B0000, #C0152A)', color: '#fff', fontFamily: 'Oswald, sans-serif', boxShadow: '0 0 20px rgba(192,21,42,0.5)' }}>
+                    {user.avatar_url
+                      ? <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                      : 'D'}
+                  </div>
+                  <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: 'rgba(0,0,0,0.6)' }}>
+                    {avatarLoading
+                      ? <Icon name="Loader2" size={18} className="text-white" fallback="RefreshCw" style={{ animation: 'spin 1s linear infinite' }} />
+                      : <Icon name="Camera" size={18} className="text-white" fallback="Upload" />}
+                  </div>
                 </div>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 <div>
                   <div className="text-xl font-semibold tracking-wider" style={{ fontFamily: 'Oswald, sans-serif' }}>{user.login}</div>
                   <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>DenoV Client</div>
@@ -220,26 +256,90 @@ export default function App() {
 
               {/* Данные */}
               <div className="px-8 py-6 flex flex-col gap-5">
-                {([
-                  { label: 'UID', value: user.uid, icon: 'Fingerprint', badge: true },
-                  { label: 'ЛОГИН', value: user.login, icon: 'User', badge: false },
-                  { label: 'ПОСЛЕДНИЙ ВХОД', value: formatDate(user.last_login_at), icon: 'Clock', badge: false },
-                  { label: 'ДАТА РЕГИСТРАЦИИ', value: formatDate(user.registered_at), icon: 'CalendarDays', badge: false },
-                ] as const).map(({ label, value, icon, badge }) => (
-                  <div key={label} className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(139,0,0,0.15)', border: '1px solid rgba(139,0,0,0.25)' }}>
-                      <Icon name={icon} size={15} fallback="Info" style={{ color: 'var(--crimson-bright)' }} />
+                <InfoRow icon="Hash" label="UID">
+                  <span className="uid-badge px-2 py-1 rounded text-xs">#{user.player_id}</span>
+                </InfoRow>
+
+                <InfoRow icon="User" label="ЛОГИН">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user.login}</span>
+                </InfoRow>
+
+                <InfoRow icon="Send" label="TELEGRAM">
+                  {tgEdit ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <span style={{ color: 'var(--text-muted)' }} className="text-sm">@</span>
+                      <input type="text" value={tgValue} onChange={e => setTgValue(e.target.value)}
+                        placeholder="username" className="denov-input flex-1 px-3 py-1.5 rounded text-sm" autoFocus />
+                      <button onClick={handleSaveTelegram} disabled={tgLoading}
+                        className="btn-crimson px-3 py-1.5 rounded text-xs font-semibold tracking-wide disabled:opacity-50"
+                        style={{ fontFamily: 'Oswald, sans-serif' }}>
+                        {tgLoading ? '...' : 'ОК'}
+                      </button>
+                      <button onClick={() => setTgEdit(false)} className="text-xs px-2 py-1.5 rounded"
+                        style={{ color: 'var(--text-muted)' }}>✕</button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs tracking-widest mb-1" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>{label}</div>
-                      {badge ? (
-                        <span className="uid-badge px-2 py-1 rounded inline-block max-w-full text-xs" style={{ wordBreak: 'break-all' }}>{value}</span>
-                      ) : (
-                        <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{value}</div>
-                      )}
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium" style={{ color: user.telegram ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        {user.telegram ? `@${user.telegram}` : 'Не указан'}
+                      </span>
+                      <button onClick={() => { setTgEdit(true); setTgValue(user.telegram || ''); }}
+                        style={{ color: 'var(--text-muted)' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--crimson-bright)')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+                        <Icon name="Pencil" size={13} fallback="Edit2" />
+                      </button>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </InfoRow>
+
+                <InfoRow icon="Clock" label="ПОСЛЕДНИЙ ВХОД">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{formatDate(user.last_login_at)}</span>
+                </InfoRow>
+
+                <InfoRow icon="CalendarDays" label="ДАТА РЕГИСТРАЦИИ">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{formatDate(user.registered_at)}</span>
+                </InfoRow>
+              </div>
+
+              <div className="divider-crimson" />
+
+              {/* Смена пароля */}
+              <div className="px-8 py-5">
+                <button onClick={() => { setPwPanel(!pwPanel); setPwMsg(null); setPwCurrent(''); setPwNew(''); }}
+                  className="flex items-center gap-2 text-sm transition-colors"
+                  style={{ color: pwPanel ? 'var(--crimson-bright)' : 'var(--text-muted)' }}
+                  onMouseEnter={e => !pwPanel && ((e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)')}
+                  onMouseLeave={e => !pwPanel && ((e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)')}>
+                  <Icon name="KeyRound" size={14} fallback="Lock" />
+                  Сменить пароль
+                  <Icon name={pwPanel ? 'ChevronUp' : 'ChevronDown'} size={13} fallback="ChevronDown" />
+                </button>
+
+                {pwPanel && (
+                  <form onSubmit={handleChangePassword} className="mt-4 flex flex-col gap-3">
+                    <input type="password" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)}
+                      placeholder="Текущий пароль" className="denov-input w-full px-4 py-2.5 rounded text-sm" required />
+                    <input type="password" value={pwNew} onChange={e => setPwNew(e.target.value)}
+                      placeholder="Новый пароль (мин. 6 символов)" className="denov-input w-full px-4 py-2.5 rounded text-sm" required />
+                    {pwMsg && (
+                      <div className="flex items-center gap-2 text-sm px-3 py-2 rounded"
+                        style={{
+                          background: pwMsg.type === 'ok' ? 'rgba(0,100,0,0.2)' : 'rgba(139,0,0,0.2)',
+                          border: `1px solid ${pwMsg.type === 'ok' ? 'rgba(0,180,0,0.3)' : 'rgba(192,21,42,0.4)'}`,
+                          color: pwMsg.type === 'ok' ? '#4caf50' : '#ff6b6b',
+                        }}>
+                        <Icon name={pwMsg.type === 'ok' ? 'CheckCircle' : 'AlertCircle'} size={14} fallback="Info" />
+                        {pwMsg.text}
+                      </div>
+                    )}
+                    <button type="submit" disabled={pwLoading}
+                      className="btn-crimson py-2.5 rounded text-sm font-semibold tracking-widest disabled:opacity-50"
+                      style={{ fontFamily: 'Oswald, sans-serif' }}>
+                      {pwLoading ? 'СОХРАНЕНИЕ...' : 'ИЗМЕНИТЬ ПАРОЛЬ'}
+                    </button>
+                  </form>
+                )}
               </div>
 
               <div className="divider-crimson" />
@@ -259,7 +359,6 @@ export default function App() {
         )}
       </main>
 
-      {/* FOOTER */}
       <footer className="py-6 text-center" style={{ borderTop: '1px solid var(--border-crimson)' }}>
         <p className="text-xs tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif' }}>
           © 2024 DENO<span style={{ color: 'var(--crimson-bright)' }}>V</span> CLIENT
